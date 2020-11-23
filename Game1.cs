@@ -37,6 +37,8 @@ namespace FallingSand
             Storage.GAME = this;
             Content.RootDirectory = "Content";
             IsMouseVisible = true;
+            IsFixedTimeStep = true;
+            TargetElapsedTime = TimeSpan.FromMilliseconds(16.667); //60 frames/sec
         }
 
         protected override void Initialize()
