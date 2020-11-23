@@ -15,19 +15,20 @@ namespace FallingSand
         public static Game1 GAME;
         public static Texture2D texture;
         public static Rectangle drawRec = new Rectangle(0, 0, 1, 1);
-        public static List<Particle> particles;
-        public static bool[,] grid;
+        public static Particle[,] particles;
     }
 
-    public struct Particle
+    public class Particle
     {
-        public int x, y;
         public int x_velocity, y_velocity;
         public Color color;
     }
 
     public class Game1 : Game
     {
+        public int size_x = 512;
+        public int size_y = 512;
+        public int timer = 0;
         public Game1()
         {
             Storage.GDM = new GraphicsDeviceManager(this);
@@ -41,11 +42,17 @@ namespace FallingSand
         protected override void Initialize()
         {
             // TODO: Add your initialization logic here
-            Storage.particles = new List<Particle>();
             Storage.GDM.PreferredBackBufferWidth = 512;
             Storage.GDM.PreferredBackBufferHeight = 512;
             Storage.GDM.ApplyChanges();
-            Storage.grid = new bool[512, 512];
+            Storage.particles = new Particle[size_x, size_y];
+            for (int x = 0; x < size_x; x++)
+            {
+                for (int y = 0; y < size_y; y++)
+                {
+                    Storage.particles[x, y] = null;
+                }
+            }
 
             base.Initialize();
         }
@@ -68,77 +75,83 @@ namespace FallingSand
                 Exit();
 
             // TODO: Add your update logic here
-
-            for (int i = 0; i < Storage.particles.Count; i++)
+            for (int x = 0; x < size_x; x++)
             {
-                var particle = Storage.particles[i];
+                for (int y = 0; y < size_y; y++)
+                {
+                    var particle = Storage.particles[x, y];
+                    if (particle != null)
+                    {
+                        particle.y_velocity += 1;
+                        if (MathF.Abs(particle.y_velocity) > 1)
+                        {
+                            particle.y_velocity = 1 * Math.Sign(particle.y_velocity);
+                        }
 
-                particle.y_velocity += 1;
-                if (MathF.Abs(particle.y_velocity) > 1)
-                {
-                    particle.y_velocity = 1 * Math.Sign(particle.y_velocity);
-                }
+                        particle.x_velocity += 0;
+                        if (MathF.Abs(particle.x_velocity) > 1)
+                        {
+                            particle.x_velocity = 1 * Math.Sign(particle.x_velocity);
+                        }
 
-                particle.x_velocity += 0;
-                if (MathF.Abs(particle.x_velocity) > 1)
-                {
-                    particle.x_velocity = 1 * Math.Sign(particle.x_velocity);
-                }
+                        int next_x = x + particle.x_velocity;
+                        int next_y = y + particle.y_velocity;
+                        if (!find_collision(next_x, next_y))
+                        {
+                            // Go there.
+                        }
+                        else if (!find_collision(next_x - 1, next_y))
+                        {
+                            next_x -= 1;
+                        }
+                        else if (!find_collision(next_x + 1, next_y))
+                        {
+                            next_x += 1;
+                        }
+                        // Simulate water.
+                        /*
+                        else if (!find_collision(next_x - 1, y))
+                        {
+                            next_x -= 1;
+                            next_y = y;
+                            particle.y_velocity = 0;
+                        }
+                        else if (!find_collision(next_x + 1, y))
+                        {
+                            next_x += 1;
+                            next_y = y;
+                            particle.y_velocity = 0;
+                        }
+                        */
+                        else
+                        {
+                            // Can't move.
+                            next_x = x;
+                            particle.x_velocity = 0;
 
-                int next_x = particle.x + particle.x_velocity;
-                int next_y = particle.y + particle.y_velocity;
-                if (!find_collision(next_x, next_y))
-                {
-                    // Go there.
+                            next_y = y;
+                            particle.y_velocity = 0;
+                        }
+                        Storage.particles[x, y] = null;
+                        x = next_x;
+                        y = next_y;
+                        Storage.particles[x, y] = particle;
+                    }
                 }
-                else if (!find_collision(next_x - 1, next_y))
-                {
-                    next_x -= 1;
-                }
-                else if (!find_collision(next_x + 1, next_y))
-                {
-                    next_x += 1;
-                }
-                // Simulate water.
-                
-                else if (!find_collision(next_x - 1, particle.y))
-                {
-                    next_x -= 1;
-                    next_y = particle.y;
-                    particle.y_velocity = 0;
-                }
-                else if (!find_collision(next_x + 1, particle.y))
-                {
-                    next_x += 1;
-                    next_y = particle.y;
-                    particle.y_velocity = 0;
-                }
-                
-                else
-                {
-                    next_x = particle.x;
-                    particle.x_velocity = 0;
-
-                    next_y = particle.y;
-                    particle.y_velocity = 0;
-                }
-                Storage.grid[particle.x, particle.y] = false;
-                particle.x = next_x;
-                particle.y = next_y;
-                Storage.grid[next_x, next_y] = true;
-                Storage.particles[i] = particle;
             }
 
+            timer += gameTime.ElapsedGameTime.Milliseconds;
             var mouse_state = Mouse.GetState();
-            if (mouse_state.LeftButton == ButtonState.Pressed)
+            if (mouse_state.LeftButton == ButtonState.Pressed &&  timer > 40)
             {
+                timer = 0;
                 var x = mouse_state.Position.X * 64 / 512;
                 var y = mouse_state.Position.Y * 64 / 512;
-                Particle particle = new Particle();
-                particle.x = x;
-                particle.y = y;
-                Storage.grid[x, y] = true;
-                Storage.particles.Add(particle);
+                if (x >= 0 && x < size_x && y >= 0 && y < size_y && Storage.particles[x, y] == null)
+                {
+                    Particle particle = new Particle();
+                    Storage.particles[x, y] = particle;
+                }
             }
 
             base.Update(gameTime);
@@ -154,19 +167,7 @@ namespace FallingSand
             {
                 return true;
             }
-            // Use the grid to find if the spot is occupied.
-            return Storage.grid[x, y];
-            /*
-            // Inefficient loop method for finding collisions.
-            for (int i = 0; i < Storage.particles.Count; i++)
-            {
-                if (Storage.particles[i].x == x && Storage.particles[i].y == y)
-                {
-                    return true;
-                }
-            }
-            return false;
-            */
+            return Storage.particles[x, y] != null;
         }
 
         protected override void Draw(GameTime gameTime)
@@ -181,19 +182,28 @@ namespace FallingSand
             // Storage.SB.Begin(SpriteSortMode.Deferred, BlendState.NonPremultiplied, SamplerState.PointClamp, DepthStencilState.Default, RasterizerState.CullNone);
             Storage.SB.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp);
 
-            for (int i = 0; i < Storage.particles.Count; i++)
+            int depth = 0;
+            for (int x = 0; x < size_x; x++)
             {
-                Vector2 pos = new Vector2(Storage.particles[i].x, Storage.particles[i].y);
-                //draw each particle as a sprite
-                Storage.SB.Draw(Storage.texture,
-                    pos,
-                    Storage.drawRec,
-                    Color.SandyBrown * 1,
-                    0,
-                    Vector2.Zero,
-                    1.0f, //scale
-                    SpriteEffects.None,
-                    i * 0.00001f);
+                for (int y = 0; y < size_y; y++)
+                {
+                    depth += 1;
+                    Particle particle = Storage.particles[x, y];
+                    if (particle != null)
+                    {
+                        Vector2 pos = new Vector2(x, y);
+                        //draw each particle as a sprite
+                        Storage.SB.Draw(Storage.texture,
+                            pos,
+                            Storage.drawRec,
+                            Color.SandyBrown,
+                            0,
+                            Vector2.Zero,
+                            1.0f, //scale
+                            SpriteEffects.None,
+                            depth * 0.00001f);
+                    }
+                }
             }
 
             Storage.SB.End();
