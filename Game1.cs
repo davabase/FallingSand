@@ -26,8 +26,8 @@ namespace FallingSand
 
     public class Game1 : Game
     {
-        public int size_x = 512;
-        public int size_y = 512;
+        public int size_x = 64;
+        public int size_y = 64;
         public int timer = 0;
         public Game1()
         {
@@ -147,8 +147,8 @@ namespace FallingSand
             if (mouse_state.LeftButton == ButtonState.Pressed &&  timer > 40)
             {
                 timer = 0;
-                var x = mouse_state.Position.X * 64 / 512;
-                var y = mouse_state.Position.Y * 64 / 512;
+                var x = mouse_state.Position.X * size_x / Storage.GDM.PreferredBackBufferWidth;
+                var y = mouse_state.Position.Y * size_y / Storage.GDM.PreferredBackBufferHeight;
                 if (x >= 0 && x < size_x && y >= 0 && y < size_y && Storage.particles[x, y] == null)
                 {
                     Particle particle = new Particle();
@@ -161,11 +161,11 @@ namespace FallingSand
 
         bool find_collision(int x, int y)
         {
-            if (y >= 64)
+            if (y >= size_x)
             {
                 return true;
             }
-            if (x <= -1 || x >= 64)
+            if (x <= -1 || x >= size_y)
             {
                 return true;
             }
@@ -175,7 +175,7 @@ namespace FallingSand
         protected override void Draw(GameTime gameTime)
         {
             SpriteBatch targetBatch = new SpriteBatch(GraphicsDevice);
-            RenderTarget2D target = new RenderTarget2D(GraphicsDevice, 64, 64);
+            RenderTarget2D target = new RenderTarget2D(GraphicsDevice, size_x, size_y);
             GraphicsDevice.SetRenderTarget(target);
 
             GraphicsDevice.Clear(Color.CornflowerBlue);
@@ -215,7 +215,7 @@ namespace FallingSand
 
             //render target to back buffer
             targetBatch.Begin(SpriteSortMode.Deferred, BlendState.NonPremultiplied, SamplerState.PointClamp, DepthStencilState.Default, RasterizerState.CullNone);
-            targetBatch.Draw(target, new Rectangle(0, 0, 512, 512), Color.White);
+            targetBatch.Draw(target, new Rectangle(0, 0, Storage.GDM.PreferredBackBufferWidth, Storage.GDM.PreferredBackBufferHeight), Color.White);
             targetBatch.End();
 
             base.Draw(gameTime);
